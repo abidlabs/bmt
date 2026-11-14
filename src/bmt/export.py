@@ -62,12 +62,14 @@ def export(project: Project, out_dir: Path | None = None, *, images: bool = True
             print(f"Rendering {len(build.surfaces)} print-resolution images (skip with --no-images)...", file=sys.stderr)
             def shoot(surface):
                 target = Path(tmp) / f"{surface.id}.png"
+                # Magnified with a transform at 1x, so the image has exactly the PDF's layout.
+                scale = surface.dpi / CSS_PX_PER_IN
                 browser.screenshot(
-                    f"{server.url}surface/{surface.id}.html?raw=1",
+                    f"{server.url}surface/{surface.id}.html?scale={scale}",
                     target,
-                    width_px=surface.width_px,
-                    height_px=surface.height_px,
-                    scale=surface.dpi / CSS_PX_PER_IN,
+                    width_px=round(surface.width_in * surface.dpi),
+                    height_px=round(surface.height_in * surface.dpi),
+                    scale=1,
                 )
                 return surface.id, target
 

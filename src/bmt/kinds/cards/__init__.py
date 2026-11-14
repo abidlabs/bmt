@@ -53,8 +53,9 @@ QPMN_LARGE_CARDS = CardProduct(
     url="https://www.qpmarketnetwork.com/app/products/custom-large-playing-cards-3.5x5.75/",
     trim_w_in=3.5,
     trim_h_in=5.75,
-    bleed_in=0.125,
-    safe_in=0.125,
+    # From QPMN's template: bleed 3.74 x 5.99 in, cut 3.5 x 5.75 in, safe 3.26 x 5.51 in.
+    bleed_in=0.12,
+    safe_in=0.12,
     dpi=300,
     min_cards=8,
     max_cards=92,

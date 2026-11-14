@@ -4,7 +4,7 @@
 
 | id | size (trim) | page incl. bleed | bleed | safe margin | cards |
 |---|---|---|---|---|---|
-| `qpmn-large-cards` | 3.5in x 5.75in | 3.75in x 6in | 0.125in | 0.125in inside trim | presets 8-92, or custom |
+| `qpmn-large-cards` | 3.5in x 5.75in | 3.74in x 5.99in | 0.12in | 0.12in inside trim | presets 8-92, or custom |
 
 `qpmn-large-cards` is QPMN's Large Playing Cards, good for flashcards:
 https://www.qpmarketnetwork.com/app/products/custom-large-playing-cards-3.5x5.75/

@@ -31,7 +31,7 @@ def new_deck(tmp_path, name="Test Deck"):
 def test_products_registered():
     kind, product = find_product("qpmn-large-cards")
     assert kind.id == "cards"
-    assert (product.page_w_in, product.page_h_in) == (3.75, 6.0)
+    assert (round(product.page_w_in, 2), round(product.page_h_in, 2)) == (3.74, 5.99)
     assert product in all_products()
 
 
@@ -80,9 +80,10 @@ def test_not_a_project(tmp_path):
 def test_surfaces_resolve_assets_against_a_base(tmp_path):
     surface = load_project(new_deck(tmp_path)).build().surfaces[0]
     assert BASE_TOKEN in surface.html
-    doc = surface.document("/project/", inject="<script>1</script>")
+    doc = surface.document("/project/", head="<style>x{}</style>", body="<script>1</script>")
     assert '<base href="/project/">' in doc and BASE_TOKEN not in doc
     assert doc.rstrip().endswith("<script>1</script></body>\n</html>")
+    assert "<style>x{}</style></head>" in doc
 
 
 def test_server_serves_preview_pages(tmp_path):
@@ -91,8 +92,12 @@ def test_server_serves_preview_pages(tmp_path):
         get = lambda path: urllib.request.urlopen(server.url + path).read().decode()
         state = json.loads(get("api/state"))
         assert state["status"] == "ready" and len(state["surfaces"]) == 16
-        assert "check.js" in get("surface/01-front.html")
-        assert "check.js" not in get("surface/01-front.html?raw=1")
+        # The preview copy locks its layout to print layout; the print copy is untouched.
+        preview, raw = get("surface/01-front.html"), get("surface/01-front.html?raw=1")
+        assert "check.js" in preview and "devicePixelRatio" in preview
+        assert "check.js" not in raw and "devicePixelRatio" not in raw
+        scaled = get("surface/01-front.html?scale=3.125")
+        assert "scale(3.125)" in scaled and "check.js" not in scaled
         assert get("print").count("<iframe") == 16
         assert ".layout" in get("project/style.css")
         with pytest.raises(urllib.error.HTTPError):
@@ -131,11 +136,11 @@ def test_export_and_checks(tmp_path):
     pdf = PdfReader(str(deck / "export" / "test-deck.pdf"))
     assert len(pdf.pages) == 16
     box = pdf.pages[0].mediabox
-    assert (round(float(box.width) / 72, 2), round(float(box.height) / 72, 2)) == (3.75, 6.0)
+    assert (round(float(box.width) / 72, 2), round(float(box.height) / 72, 2)) == (3.74, 5.99)
     assert "2 + 3" in pdf.pages[0].extract_text() and "5" in pdf.pages[1].extract_text()
     assert len(PdfReader(str(deck / "export" / "test-deck-fronts.pdf")).pages) == 8
     png = (deck / "export" / "faces" / "01-front.png").read_bytes()
-    assert struct.unpack(">II", png[16:24]) == (1125, 1800)
+    assert struct.unpack(">II", png[16:24]) == (1122, 1797)  # QPMN's template size at 300 dpi
 
     # Text pushed to the page edge, and a background that stops at the trim line.
     (deck / "front.html").write_text(

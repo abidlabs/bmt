@@ -64,13 +64,18 @@ class Surface:
     def hash(self) -> str:
         return hashlib.sha1(self.html.encode()).hexdigest()[:12]
 
-    def document(self, base_url: str, inject: str = "") -> str:
+    def document(self, base_url: str, *, head: str = "", body: str = "") -> str:
         """The final HTML, with relative URLs resolving against ``base_url``.
 
-        ``inject`` is extra markup placed at the end of the body (bmt's check script).
+        ``head`` and ``body`` are extra markup appended to those elements (bmt's
+        own scripts when a surface is shown in the preview or checked).
         """
         html = self.html.replace(BASE_TOKEN, base_url)
-        return html.replace("</body>", inject + "</body>") if inject else html
+        if head:
+            html = html.replace("</head>", head + "</head>")
+        if body:
+            html = html.replace("</body>", body + "</body>")
+        return html
 
     @property
     def height_px(self) -> int:

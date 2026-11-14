@@ -115,7 +115,7 @@ export function createViewer({ stage, toolbar, hint, hud = [] }) {
     clip.className = 'bmt-clip';
     clip.style.clipPath = `inset(${B}px round ${R}px)`;
     const frame = document.createElement('iframe');
-    frame.style.width = PW + 'px'; frame.style.height = PH + 'px';
+    sizeFrame(frame);
     frame.setAttribute('scrolling', 'no'); frame.tabIndex = -1;
     frame.title = `card ${index + 1} ${side}`;
     const shade = document.createElement('div');
@@ -135,6 +135,23 @@ export function createViewer({ stage, toolbar, hint, hud = [] }) {
     const obj = new CSS3DObject(el);
     return { el, inner, frame, obj, v: null };
   }
+
+  // Each page cancels the screen scale so that its text is laid out exactly as
+  // in print (see _LAYOUT_LOCK in server.py); magnify the frame back to size.
+  function sizeFrame(frame) {
+    const dpr = window.devicePixelRatio || 1;
+    frame.style.width = dims.PW / dpr + 'px';
+    frame.style.height = dims.PH / dpr + 'px';
+    frame.style.transformOrigin = '0 0';
+    frame.style.transform = dpr === 1 ? '' : `scale(${dpr})`;
+  }
+  function watchScale() {
+    matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change', () => {
+      for (const c of cards) for (const f of c.faces) sizeFrame(f.frame);
+      watchScale();
+    }, { once: true });
+  }
+  watchScale();
 
   function setRes(card, k) {
     if (card.res === k) return;

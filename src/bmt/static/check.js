@@ -13,7 +13,10 @@
     const issues = [];
     const add = (level, message) => issues.push({ level, message, where: cfg.label });
     const W = window.innerWidth, H = window.innerHeight;
-    const m = cfg.bleedPx + cfg.safePx, tol = 0.75;
+    // The preview zooms the page to lock its layout, so measure in page units.
+    const z = W / cfg.pageWPx;
+    const bleed = cfg.bleedPx * z;
+    const m = (cfg.bleedPx + cfg.safePx) * z, tol = 0.75;
     const outside = (r) => r.left < m - tol || r.top < m - tol || r.right > W - m + tol || r.bottom > H - m + tol;
     const visible = (el) => {
       const cs = getComputedStyle(el);
@@ -35,7 +38,9 @@
       // measure the glyphs and test the rows the ink actually occupies.
       const cs = getComputedStyle(el);
       ctx.font = cs.font;
-      const tm = ctx.measureText(cs.textTransform === 'uppercase' ? text.toUpperCase() : text);
+      const raw = ctx.measureText(cs.textTransform === 'uppercase' ? text.toUpperCase() : text);
+      const tm = {};
+      for (const k of ['fontBoundingBoxAscent', 'fontBoundingBoxDescent', 'actualBoundingBoxAscent', 'actualBoundingBoxDescent']) tm[k] = raw[k] * z;
       const rects = [...range.getClientRects()]
         .filter((r) => r.width > 0.5 && r.height > 0.5)
         .map((r) => {
@@ -59,7 +64,7 @@
       const src = img.currentSrc || '';
       const vector = /\.svg($|\?)/i.test(src) || src.startsWith('data:image/svg');
       if (!vector) {
-        const dpi = Math.min(img.naturalWidth / (r.width / 96), img.naturalHeight / (r.height / 96));
+        const dpi = Math.min(img.naturalWidth / (r.width / z / 96), img.naturalHeight / (r.height / z / 96));
         if (dpi < cfg.dpi * 0.98) add('warning', `Image "${name}" prints at about ${Math.round(dpi)} dpi; ${cfg.dpi} dpi or more is recommended.`);
       }
       if (!img.closest('[data-bleed-ok]') && outside(r)) {
@@ -81,12 +86,12 @@
         return parts.length < 4 || parseFloat(parts[3]) > 0.05;
       };
       const paintedAt = (x, y) => document.elementsFromPoint(x, y).some(paints);
-      const inner = cfg.bleedPx + 3, fr = [0.25, 0.5, 0.75];
+      const inner = bleed + 3 * z, fr = [0.25, 0.5, 0.75];
       const edges = {
-        top: fr.map((f) => [[W * f, 1], [W * f, inner]]),
-        bottom: fr.map((f) => [[W * f, H - 1.5], [W * f, H - inner]]),
-        left: fr.map((f) => [[1, H * f], [inner, H * f]]),
-        right: fr.map((f) => [[W - 1.5, H * f], [W - inner, H * f]]),
+        top: fr.map((f) => [[W * f, z], [W * f, inner]]),
+        bottom: fr.map((f) => [[W * f, H - 1.5 * z], [W * f, H - inner]]),
+        left: fr.map((f) => [[z, H * f], [inner, H * f]]),
+        right: fr.map((f) => [[W - 1.5 * z, H * f], [W - inner, H * f]]),
       };
       const bad = Object.entries(edges)
         .filter(([, samples]) => samples.some(([o, i]) => paintedAt(i[0], i[1]) && !paintedAt(o[0], o[1])))

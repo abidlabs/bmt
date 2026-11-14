@@ -31,6 +31,22 @@ from .core import (
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+# Browsers lay text out slightly differently at each screen scale (a 2x display,
+# browser zoom), enough to move a line break. Print is laid out at 1x. So when a
+# surface is embedded in the preview it cancels the screen scale with CSS zoom,
+# which makes its layout identical to the printed one; the viewer magnifies the
+# frame back up with a transform, which never affects layout.
+_LAYOUT_LOCK = """<script>
+(function () {
+  if (window.parent === window) return;
+  function lock() {
+    document.documentElement.style.zoom = 1 / window.devicePixelRatio;
+    try { matchMedia('(resolution: ' + window.devicePixelRatio + 'dppx)').addEventListener('change', lock, { once: true }); } catch (e) {}
+  }
+  lock();
+})();
+</script>"""
 POLL_SECONDS = 0.3
 PROJECT_BASE = "/project/"
 
@@ -145,23 +161,32 @@ class ProjectServer:
         self.stop()
 
     # ---------- generated pages ----------
-    def surface_html(self, surface_id: str, *, raw: bool) -> str | None:
+    def surface_html(self, surface_id: str, *, raw: bool = False, scale: float | None = None) -> str | None:
+        """One surface as a page.
+
+        Plain (``raw``) for printing; ``scale`` magnifies it without changing its
+        layout, for print-resolution images; otherwise with bmt's preview scripts.
+        """
         with self.cond:
             build = self.build
         surface = next((s for s in build.surfaces if s.id == surface_id), None) if build else None
         if surface is None:
             return None
+        if scale:
+            style = f"<style>html {{ transform: scale({scale}); transform-origin: 0 0; }}</style>"
+            return surface.document(PROJECT_BASE, head=style)
         if raw:
             return surface.document(PROJECT_BASE)
         config = {
             "id": surface.id,
             "label": surface.label,
+            "pageWPx": surface.width_in * CSS_PX_PER_IN,
             "bleedPx": surface.bleed_in * CSS_PX_PER_IN,
             "safePx": surface.safe_in * CSS_PX_PER_IN,
             "dpi": surface.dpi,
         }
-        inject = f'<script>window.__bmt = {json.dumps(config)};</script><script src="/static/check.js"></script>'
-        return surface.document(PROJECT_BASE, inject)
+        body = f'<script>window.__bmt = {json.dumps(config)};</script><script src="/static/check.js"></script>'
+        return surface.document(PROJECT_BASE, head=_LAYOUT_LOCK, body=body)
 
     def _frames(self, *, raw: bool) -> str:
         surfaces = self.build.surfaces if self.build else []
@@ -255,7 +280,9 @@ def _make_handler(server: ProjectServer):
             elif path.startswith("/static/"):
                 self._file(STATIC_DIR / Path(path).name)
             elif path.startswith("/surface/") and path.endswith(".html"):
-                doc = server.surface_html(Path(path).stem, raw="raw=1" in query)
+                params = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
+                scale = float(params["scale"]) if params.get("scale", "").replace(".", "", 1).isdigit() else None
+                doc = server.surface_html(Path(path).stem, raw="raw" in params, scale=scale)
                 self._send(200 if doc else 404, doc or "no such surface", html_type)
             elif path.startswith(PROJECT_BASE):
                 self._project_file(path[len(PROJECT_BASE):])
