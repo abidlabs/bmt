@@ -76,8 +76,9 @@ export function createViewer({ stage, toolbar, hint, hud = [] }) {
       setRes(c, view.mode === 'focus' && view.focus === c.index ? FOCUS_RES : 1);
     }
     const n = cards.length;
-    hint.textContent =
-      view.mode === 'stack' ? `Click the deck to spread out all ${n} cards · drag to turn it`
+    hint.textContent = view.guides
+      ? 'Guides are not printed · red zone is cut off when the card is trimmed · keep text inside the dashed line'
+      : view.mode === 'stack' ? `Click the deck to spread out all ${n} cards · drag to turn it`
       : view.mode === 'spread' ? 'Click a card to inspect it · drag to pan · scroll to zoom'
       : `Card ${view.focus + 1} of ${n} · drag to turn · ← → for other cards · click to close`;
   }
