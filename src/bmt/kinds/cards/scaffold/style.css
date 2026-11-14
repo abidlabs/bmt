@@ -1,0 +1,40 @@
+/* Shared by every card face. The page is the full print size including bleed.
+   .bleed fills the page (backgrounds); .safe is the area that survives trimming. */
+
+body {
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  color: #1d2433;
+}
+
+.front .bg { background: #ffd166; }
+.back .bg { background: #1d2433; }
+.back { color: #fff7e0; }
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  padding: 0.15in 0.1in;
+}
+
+.label {
+  font-size: 11pt;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.big {
+  font-size: 80pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hint {
+  font-size: 15pt;
+  line-height: 1.35;
+  max-width: 2.6in;
+}

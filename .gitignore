@@ -4,3 +4,8 @@ __pycache__/
 dist/
 build/
 .venv/
+.pytest_cache/
+
+# bmt's own output inside project folders
+.bmt/
+export/

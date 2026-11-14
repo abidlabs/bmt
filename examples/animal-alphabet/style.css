@@ -1,0 +1,115 @@
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Color+Emoji&display=block");
+
+body {
+  font-family: "Fredoka", "Arial Rounded MT Bold", "Helvetica Neue", sans-serif;
+  color: #26303d;
+}
+
+.emoji { font-family: "Noto Color Emoji", sans-serif; }
+
+/* ---------- front ---------- */
+.front .bg {
+  background:
+    radial-gradient(circle at 50% 46%, #ffffff 0 1.45in, transparent 1.46in),
+    radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.22) 0 0.5in, transparent 0.51in),
+    radial-gradient(circle at 92% 90%, rgba(255, 255, 255, 0.18) 0 0.7in, transparent 0.71in),
+    var(--c);
+}
+
+.front-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+}
+
+.letters {
+  align-self: flex-start;
+  display: flex;
+  align-items: baseline;
+  gap: 0.08in;
+  line-height: 1.1;
+  font-weight: 700;
+  padding-left: 0.05in;
+}
+.letters .upper { font-size: 84pt; }
+.letters .lower { font-size: 60pt; opacity: 0.85; }
+
+.picture {
+  position: absolute;
+  left: 0; right: 0;
+  top: 46%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+.picture .emoji { font-size: 150pt; line-height: 1; }
+
+.word {
+  margin-top: auto;
+  width: 100%;
+  background: #fff;
+  color: #26303d;
+  border-radius: 0.3in;
+  padding: 0.1in 0.12in 0.13in;
+  text-align: center;
+  font-size: 34pt;
+  font-weight: 600;
+  line-height: 1.05;
+}
+.word b { color: var(--c); font-weight: 700; }
+
+/* ---------- back ---------- */
+.back .bg {
+  background:
+    radial-gradient(circle at 88% 6%, color-mix(in srgb, var(--c) 28%, transparent) 0 0.8in, transparent 0.81in),
+    radial-gradient(circle at 6% 96%, color-mix(in srgb, var(--c) 22%, transparent) 0 0.9in, transparent 0.91in),
+    #fff8ec;
+}
+
+.back-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.16in;
+}
+
+.tag {
+  align-self: flex-start;
+  background: var(--c);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15pt;
+  padding: 0.07in 0.16in;
+  border-radius: 999px;
+}
+.emoji.small { font-size: 14pt; }
+
+.panel {
+  background: #fff;
+  border: 0.03in solid var(--c);
+  border-radius: 0.24in;
+  padding: 0.16in 0.18in 0.18in;
+}
+.panel.ask { background: var(--c); color: #fff; }
+
+.kicker {
+  font-size: 11pt;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c);
+  margin-bottom: 0.05in;
+}
+.ask .kicker { color: rgba(255, 255, 255, 0.85); }
+
+.fact, .question { margin: 0; font-weight: 500; line-height: 1.22; }
+.fact { font-size: 21pt; }
+.question { font-size: 19pt; }
+
+.count {
+  margin-top: auto;
+  align-self: center;
+  font-size: 11pt;
+  font-weight: 500;
+  color: #8a8f98;
+}

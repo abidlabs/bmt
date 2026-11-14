@@ -1,0 +1,13 @@
+<div class="bleed bg" style="--c: {{ card.color }}"></div>
+<div class="safe back-layout" style="--c: {{ card.color }}">
+  <div class="tag">{{ card.letter }} is for {{ card.animal }} <span class="emoji small">{{ card.emoji }}</span></div>
+  <div class="panel">
+    <div class="kicker">Did you know?</div>
+    <p class="fact">{{ card.fact }}</p>
+  </div>
+  <div class="panel ask">
+    <div class="kicker">Your turn</div>
+    <p class="question">{{ card.ask }}</p>
+  </div>
+  <div class="count">{{ index }} / {{ total }}</div>
+</div>

@@ -1,0 +1,6 @@
+<div class="bleed bg" style="--c: {{ card.color }}"></div>
+<div class="safe front-layout" style="--c: {{ card.color }}">
+  <div class="letters"><span class="upper">{{ card.letter }}</span><span class="lower">{{ card.letter|lower }}</span></div>
+  <div class="picture"><span class="emoji">{{ card.emoji }}</span></div>
+  <div class="word"><b>{{ card.animal[0] }}</b>{{ card.animal[1:] }}</div>
+</div>

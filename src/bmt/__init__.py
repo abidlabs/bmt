@@ -1,8 +1,3 @@
-"""bmt: placeholder package."""
+"""bmt: build, make and buy things you design with your AI agent."""
 
-__version__ = "0.0.1"
-
-
-def hello() -> str:
-    """Return a greeting, as a smoke test that the install works."""
-    return "Hello from bmt!"
+__version__ = "0.1.0"

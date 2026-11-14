@@ -1,0 +1,10 @@
+[
+  { "question": "2 + 3", "answer": "5", "hint": "Count up three from two." },
+  { "question": "4 + 4", "answer": "8", "hint": "Double four." },
+  { "question": "7 − 2", "answer": "5", "hint": "Count back two from seven." },
+  { "question": "3 × 3", "answer": "9", "hint": "Three groups of three." },
+  { "question": "10 − 6", "answer": "4", "hint": "What plus six makes ten?" },
+  { "question": "6 + 5", "answer": "11", "hint": "Six plus four is ten, then one more." },
+  { "question": "2 × 6", "answer": "12", "hint": "Double six." },
+  { "question": "9 − 9", "answer": "0", "hint": "Take everything away." }
+]

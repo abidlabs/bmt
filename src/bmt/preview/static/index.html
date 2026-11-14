@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bmt preview</title>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+</script>
+<style>
+  :root {
+    --bg0: #232b36; --bg1: #0f1318; --ink: #eef1f5; --muted: #9aa5b3;
+    --panel: rgba(22, 27, 34, 0.82); --line: rgba(255, 255, 255, 0.12);
+    --accent: #ffd166; --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: radial-gradient(ellipse at 50% 35%, var(--bg0), var(--bg1) 75%);
+  }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .hud { position: fixed; z-index: 2; }
+  #title { top: 16px; left: 18px; max-width: 45vw; pointer-events: none; }
+  #title h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
+  #title p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  #title a { color: inherit; pointer-events: auto; }
+  #toolbar { top: 14px; right: 16px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .btn {
+    font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px);
+  }
+  .btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+  .btn[aria-pressed="true"] { background: var(--accent); color: #1b1b1b; border-color: var(--accent); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #hint { bottom: 16px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 12.5px; text-align: center; pointer-events: none; white-space: nowrap; }
+  #status { bottom: 14px; left: 16px; display: flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; }
+  #status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  #status[data-status="rendering"] .dot { background: var(--warn); animation: pulse 0.9s infinite; }
+  #status[data-status="error"] .dot, #status[data-status="offline"] .dot { background: var(--err); }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+  #issues-btn { bottom: 14px; right: 16px; border-radius: 999px; padding: 5px 11px; font-size: 12.5px; }
+  #issues { bottom: 52px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: 50vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; backdrop-filter: blur(8px); }
+  #issues li { margin: 8px 0; list-style: none; font-size: 12.5px; }
+  #issues ul { margin: 0; padding: 0; }
+  #issues .where { color: var(--muted); }
+  #issues .lvl { font-weight: 650; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.06em; margin-right: 6px; }
+  .lvl.error { color: var(--err); } .lvl.warning { color: var(--warn); } .lvl.info { color: var(--muted); }
+  #error { inset: 0; display: grid; place-items: center; background: rgba(10, 12, 16, 0.6); z-index: 5; padding: 24px; }
+  #error div { max-width: 640px; background: #1b2028; border: 1px solid var(--err); border-radius: 12px; padding: 18px 22px; }
+  #error h2 { margin: 0 0 8px; font-size: 15px; color: var(--err); }
+  #error pre { margin: 0; white-space: pre-wrap; font: 13px/1.5 ui-monospace, Menlo, monospace; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="title" class="hud"><h1 id="name">bmt preview</h1><p id="sub"></p></div>
+<div id="toolbar" class="hud"></div>
+<div id="hint" class="hud"></div>
+<div id="status" class="hud" data-status="rendering"><span class="dot"></span><span id="status-text">Rendering…</span></div>
+<button id="issues-btn" class="hud btn" hidden></button>
+<div id="issues" class="hud" hidden><ul></ul></div>
+<div id="error" class="hud" hidden><div><h2>The project has a problem</h2><pre></pre></div></div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const statusLabels = { rendering: 'Rendering…', ready: 'Live', error: 'Needs a fix', offline: 'Preview server stopped' };
+function setStatus(s) {
+  $('status').dataset.status = s;
+  $('status-text').textContent = statusLabels[s] || s;
+}
+
+let viewer = null;
+try {
+  const mod = await import('/viewer.js');
+  viewer = mod.createViewer({ stage: $('stage'), toolbar: $('toolbar'), hint: $('hint') });
+} catch (e) {
+  $('error').hidden = false;
+  $('error').querySelector('pre').textContent = 'Could not start the 3D viewer: ' + e.message + '\n(The viewer loads three.js from a CDN, so it needs an internet connection.)';
+}
+
+async function refresh() {
+  const state = await (await fetch('/api/state')).json();
+  document.title = state.name + ' · bmt preview';
+  $('name').textContent = state.name;
+  if (state.product) {
+    const sub = $('sub');
+    sub.textContent = '';
+    const a = document.createElement('a');
+    a.href = state.product.url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = state.product.vendor + ' ' + state.product.name;
+    sub.append(a);
+    if (viewer && viewer.describe) sub.append(' · ' + viewer.describe(state));
+  }
+  setStatus(state.status);
+  $('error').hidden = !state.error;
+  if (state.error) $('error').querySelector('pre').textContent = state.error;
+
+  const issues = state.issues || [];
+  const btn = $('issues-btn');
+  btn.hidden = issues.length === 0;
+  if (issues.length === 0) $('issues').hidden = true;
+  const n = issues.filter((i) => i.level !== 'info').length;
+  btn.textContent = n ? `⚠ ${n} print warning${n === 1 ? '' : 's'}` : `${issues.length} note${issues.length === 1 ? '' : 's'}`;
+  const ul = $('issues').querySelector('ul');
+  ul.textContent = '';
+  for (const i of issues) {
+    const li = document.createElement('li');
+    const lvl = document.createElement('span'); lvl.className = 'lvl ' + i.level; lvl.textContent = i.level;
+    li.append(lvl);
+    if (i.where) { const w = document.createElement('span'); w.className = 'where'; w.textContent = i.where + ' — '; li.append(w); }
+    li.append(i.message);
+    ul.append(li);
+  }
+  if (viewer && state.model && !state.error) viewer.update(state);
+}
+$('issues-btn').addEventListener('click', () => { $('issues').hidden = !$('issues').hidden; });
+
+const events = new EventSource('/api/events');
+events.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  setStatus(msg.status);
+  if (msg.status !== 'rendering') refresh();
+};
+events.onerror = () => setStatus('offline');
+refresh();
+</script>
+</body>
+</html>

@@ -1,10 +1,21 @@
 [project]
 name = "bmt"
-version = "0.0.1"
-description = "Placeholder package for bmt."
+version = "0.1.0"
+description = "Build, make and buy things you design with your AI agent. First product: printable flashcard decks."
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    "jinja2>=3.1",
+    "pillow>=10",
+    "playwright>=1.45",
+    "pypdf>=4",
+]
+
+[project.scripts]
+bmt = "bmt.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
 
 [build-system]
 requires = ["hatchling"]
