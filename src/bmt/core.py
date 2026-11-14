@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 CSS_PX_PER_IN = 96
 PROJECT_FILE = "bmt.toml"
+# Stands in for the URL of the project folder until a surface is served or printed.
+BASE_TOKEN = "__BMT_PROJECT_BASE__/"
 # Folders inside a project that bmt writes to and must not treat as sources.
 IGNORED_DIRS = {".bmt", "export", ".git", "__pycache__", "node_modules"}
 
@@ -57,6 +59,18 @@ class Surface:
     @property
     def width_px(self) -> int:
         return round(self.width_in * CSS_PX_PER_IN)
+
+    @property
+    def hash(self) -> str:
+        return hashlib.sha1(self.html.encode()).hexdigest()[:12]
+
+    def document(self, base_url: str, inject: str = "") -> str:
+        """The final HTML, with relative URLs resolving against ``base_url``.
+
+        ``inject`` is extra markup placed at the end of the body (bmt's check script).
+        """
+        html = self.html.replace(BASE_TOKEN, base_url)
+        return html.replace("</body>", inject + "</body>") if inject else html
 
     @property
     def height_px(self) -> int:
@@ -200,12 +214,12 @@ def page_html(
 ) -> str:
     """Wrap a body fragment in a page of an exact physical size.
 
-    Relative URLs resolve against the project folder, and ``style.css`` in the
-    project folder is linked when present.
+    Relative URLs resolve against the project folder (see ``Surface.document``),
+    and ``style.css`` in the project folder is linked when present.
     """
     head = '<link rel="stylesheet" href="style.css">' if (root / "style.css").is_file() else ""
     return _PAGE_WRAPPER.format(
-        base=root.as_uri() + "/",
+        base=BASE_TOKEN,
         w=width_in,
         h=height_in,
         bleed=bleed_in,

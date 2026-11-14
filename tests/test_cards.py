@@ -1,10 +1,25 @@
 import json
+import urllib.error
+import urllib.request
 
 import pytest
 
+from bmt import browser
 from bmt.cli import main
-from bmt.core import ProjectError, load_project
+from bmt.core import BASE_TOKEN, ProjectError, load_project
 from bmt.kinds import all_products, find_product
+from bmt.server import ProjectServer
+
+
+def _has_browser() -> bool:
+    try:
+        browser.find_browser()
+        return True
+    except browser.BrowserNotFound:
+        return False
+
+
+needs_browser = pytest.mark.skipif(not _has_browser(), reason="needs an installed Chrome-family browser")
 
 
 def new_deck(tmp_path, name="Test Deck"):
@@ -62,10 +77,51 @@ def test_not_a_project(tmp_path):
         load_project(tmp_path)
 
 
+def test_surfaces_resolve_assets_against_a_base(tmp_path):
+    surface = load_project(new_deck(tmp_path)).build().surfaces[0]
+    assert BASE_TOKEN in surface.html
+    doc = surface.document("/project/", inject="<script>1</script>")
+    assert '<base href="/project/">' in doc and BASE_TOKEN not in doc
+    assert doc.rstrip().endswith("<script>1</script></body>\n</html>")
+
+
+def test_server_serves_preview_pages(tmp_path):
+    deck = new_deck(tmp_path)
+    with ProjectServer(deck, watch=False) as server:
+        get = lambda path: urllib.request.urlopen(server.url + path).read().decode()
+        state = json.loads(get("api/state"))
+        assert state["status"] == "ready" and len(state["surfaces"]) == 16
+        assert "check.js" in get("surface/01-front.html")
+        assert "check.js" not in get("surface/01-front.html?raw=1")
+        assert get("print").count("<iframe") == 16
+        assert ".layout" in get("project/style.css")
+        with pytest.raises(urllib.error.HTTPError):
+            get("project/../secret")
+        assert "createViewer" in get("viewer.js")
+
+
+def test_server_picks_up_edits_and_errors(tmp_path):
+    deck = new_deck(tmp_path)
+    server = ProjectServer(deck, watch=False)
+    before = server.snapshot()["surfaces"]["01-front"]["v"]
+    (deck / "cards.json").write_text("[{")
+    server.rebuild()
+    broken = server.snapshot()
+    assert broken["status"] == "error" and "not valid JSON" in broken["error"]
+    assert broken["surfaces"]["01-front"]["v"] == before  # last good design is kept
+    (deck / "cards.json").write_text(json.dumps([{"question": "new", "answer": "a", "hint": "h"}]))
+    server.rebuild()
+    after = server.snapshot()
+    assert after["status"] == "ready" and after["surfaces"]["01-front"]["v"] != before
+    server.httpd.server_close()
+
+
+@needs_browser
 def test_export_and_checks(tmp_path):
-    """End to end with a real browser: sizes are right and the checks catch real problems."""
+    """End to end with an installed browser: sizes are right and the checks catch real problems."""
+    import struct
+
     from pypdf import PdfReader
-    from PIL import Image
 
     from bmt.export import check, export
 
@@ -76,8 +132,10 @@ def test_export_and_checks(tmp_path):
     assert len(pdf.pages) == 16
     box = pdf.pages[0].mediabox
     assert (round(float(box.width) / 72, 2), round(float(box.height) / 72, 2)) == (3.75, 6.0)
-    assert Image.open(deck / "export" / "faces" / "01-front.png").size == (1125, 1800)
+    assert "2 + 3" in pdf.pages[0].extract_text() and "5" in pdf.pages[1].extract_text()
     assert len(PdfReader(str(deck / "export" / "test-deck-fronts.pdf")).pages) == 8
+    png = (deck / "export" / "faces" / "01-front.png").read_bytes()
+    assert struct.unpack(">II", png[16:24]) == (1125, 1800)
 
     # Text pushed to the page edge, and a background that stops at the trim line.
     (deck / "front.html").write_text(

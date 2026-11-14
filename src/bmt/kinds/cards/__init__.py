@@ -58,7 +58,7 @@ QPMN_LARGE_CARDS = CardProduct(
     dpi=300,
     min_cards=8,
     max_cards=92,
-    corner_radius_in=0.14,
+    corner_radius_in=0.15,
     thickness_in=0.012,
 )
 
@@ -157,32 +157,34 @@ class CardsKind(Kind):
         }
         return Build(surfaces=surfaces, model=model, issues=issues)
 
-    def export(self, project, build, rendered, out_dir: Path) -> list[Path]:
+    def export(self, project, build, pdf: Path, images: dict[str, Path], out_dir: Path) -> list[Path]:
         """One PDF with every face in order (1 front, 1 back, 2 front, ...), plus fronts/backs PDFs and PNGs."""
-        from pypdf import PdfWriter
+        from pypdf import PdfReader, PdfWriter
 
+        reader = PdfReader(str(pdf))
+        page_of = {s.id: i for i, s in enumerate(build.surfaces)}
         written: list[Path] = []
 
-        def merge(surface_ids: list[str], name: str) -> None:
+        def write(surface_ids: list[str], name: str) -> None:
             writer = PdfWriter()
             for sid in surface_ids:
-                writer.append(str(rendered[sid].pdf), pages=(0, 1))
+                writer.add_page(reader.pages[page_of[sid]])
             target = out_dir / name
             with open(target, "wb") as f:
                 writer.write(f)
             written.append(target)
 
         cards = build.model["cards"]
-        merge([c[s] for c in cards for s in SIDES], f"{project.slug}.pdf")
-        merge([c["front"] for c in cards], f"{project.slug}-fronts.pdf")
-        merge([c["back"] for c in cards], f"{project.slug}-backs.pdf")
+        write([c[s] for c in cards for s in SIDES], f"{project.slug}.pdf")
+        write([c["front"] for c in cards], f"{project.slug}-fronts.pdf")
+        write([c["back"] for c in cards], f"{project.slug}-backs.pdf")
 
-        faces_dir = out_dir / "faces"
-        faces_dir.mkdir(exist_ok=True)
-        for old in faces_dir.glob("*.png"):
-            old.unlink()
-        for s in build.surfaces:
-            target = faces_dir / f"{s.id}.png"
-            target.write_bytes(rendered[s.id].png.read_bytes())
-        written.append(faces_dir)
+        if images:
+            faces_dir = out_dir / "faces"
+            faces_dir.mkdir(exist_ok=True)
+            for old in faces_dir.glob("*.png"):
+                old.unlink()
+            for s in build.surfaces:
+                (faces_dir / f"{s.id}.png").write_bytes(images[s.id].read_bytes())
+            written.append(faces_dir)
         return written

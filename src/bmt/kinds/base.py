@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..core import Build, Product, Project
-    from ..render import Rendered
 
 
 class Kind(ABC):
@@ -60,5 +59,11 @@ class Kind(ABC):
         """
 
     @abstractmethod
-    def export(self, project: "Project", build: "Build", rendered: dict[str, "Rendered"], out_dir: Path) -> list[Path]:
-        """Assemble rendered surfaces into the files the vendor wants. Returns the files written."""
+    def export(
+        self, project: "Project", build: "Build", pdf: Path, images: dict[str, Path], out_dir: Path
+    ) -> list[Path]:
+        """Assemble the vendor's files. Returns the files written.
+
+        ``pdf`` has one page per surface, in ``build.surfaces`` order. ``images``
+        maps surface ids to print-resolution PNGs (empty if images were skipped).
+        """

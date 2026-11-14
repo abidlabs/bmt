@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .browser import BrowserNotFound
 from .core import PROJECT_FILE, Issue, ProjectError, load_project
 from .kinds import KINDS, all_products, get_kind
 
@@ -44,7 +45,7 @@ def cmd_new(args) -> int:
 
 
 def cmd_preview(args) -> int:
-    from .preview.server import serve
+    from .server import serve
 
     serve(Path(args.dir), host=args.host, port=args.port, open_browser=not args.no_open)
     return 0
@@ -65,7 +66,7 @@ def cmd_export(args) -> int:
     from .export import export
 
     project = load_project(args.dir)
-    written, issues = export(project, Path(args.out) if args.out else None)
+    written, issues = export(project, Path(args.out) if args.out else None, images=not args.no_images)
     _print_issues(issues)
     print("\nWrote:")
     for p in written:
@@ -124,6 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("export", help="write the print-ready files to upload to the vendor")
     p.add_argument("dir", nargs="?", default=".")
     p.add_argument("--out", help="output folder (default: <dir>/export)")
+    p.add_argument("--no-images", action="store_true", help="write only the PDFs, not per-surface PNGs")
     p.set_defaults(func=cmd_export)
 
     p = sub.add_parser("products", help="list the products bmt can make")
@@ -137,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args)
-    except (ProjectError, ValueError) as e:
+    except (ProjectError, ValueError, BrowserNotFound, RuntimeError) as e:
         print(f"bmt: {e}", file=sys.stderr)
         return 1
 

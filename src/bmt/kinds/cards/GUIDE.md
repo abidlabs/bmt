@@ -65,7 +65,9 @@ A typical face:
 
 The user sees the deck as a 3D stack; clicking it spreads all cards into a grid
 where each card slowly spins to show both sides. Clicking a card inspects it up
-close. "Safe area" shades the margin that may be trimmed.
+close. Cards are shown as they will be cut: the bleed is cropped and the corners
+rounded. **Print guides** overlays the vendor's template on every card: the red
+zone outside the trim line is cut off, and the dashed line is the safe area.
 
 ## Export
 
@@ -75,6 +77,7 @@ close. "Safe area" shades the margin that may be trimmed.
 - `<name>-fronts.pdf`  fronts only, one card per page
 - `<name>-backs.pdf`   backs only, one card per page
 - `faces/NN-front.png`, `faces/NN-back.png`  300 dpi images, one per face
+  (these take the longest; `--no-images` skips them)
 
 Each PDF page and PNG is the full page including bleed, which is what the
 vendor's template expects. QPMN's design tool takes uploads of PDF, PNG or JPG

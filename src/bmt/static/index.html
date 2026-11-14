@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>bmt preview</title>
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
 </script>
 <style>
   :root {
@@ -20,17 +23,16 @@
     color: var(--ink);
     background: radial-gradient(ellipse at 50% 35%, var(--bg0), var(--bg1) 75%);
   }
-  #stage { position: fixed; inset: 0; }
-  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #stage { position: fixed; inset: 0; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
   .hud { position: fixed; z-index: 2; }
   #title { top: 16px; left: 18px; max-width: 45vw; pointer-events: none; }
   #title h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
   #title p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
   #title a { color: inherit; pointer-events: auto; }
-  #toolbar { top: 14px; right: 16px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  #toolbar { top: 14px; right: 16px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 52vw; }
   .btn {
     font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
-    border-radius: 8px; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px); text-decoration: none;
   }
   .btn:hover { border-color: rgba(255, 255, 255, 0.3); }
   .btn[aria-pressed="true"] { background: var(--accent); color: #1b1b1b; border-color: var(--accent); }
@@ -38,9 +40,7 @@
   #hint { bottom: 16px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 12.5px; text-align: center; pointer-events: none; white-space: nowrap; }
   #status { bottom: 14px; left: 16px; display: flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; }
   #status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-  #status[data-status="rendering"] .dot { background: var(--warn); animation: pulse 0.9s infinite; }
   #status[data-status="error"] .dot, #status[data-status="offline"] .dot { background: var(--err); }
-  @keyframes pulse { 50% { opacity: 0.3; } }
   #issues-btn { bottom: 14px; right: 16px; border-radius: 999px; padding: 5px 11px; font-size: 12.5px; }
   #issues { bottom: 52px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: 50vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; backdrop-filter: blur(8px); }
   #issues li { margin: 8px 0; list-style: none; font-size: 12.5px; }
@@ -53,6 +53,14 @@
   #error h2 { margin: 0 0 8px; font-size: 15px; color: var(--err); }
   #error pre { margin: 0; white-space: pre-wrap; font: 13px/1.5 ui-monospace, Menlo, monospace; }
   [hidden] { display: none !important; }
+  /* Narrow windows (side panes, phones): controls move to the bottom. */
+  @media (max-width: 760px) {
+    #title { max-width: none; right: 16px; top: 12px; left: 14px; }
+    #title h1 { font-size: 16px; }
+    #hint { bottom: 128px; left: 14px; right: 14px; transform: none; white-space: normal; font-size: 12px; }
+    #toolbar { top: auto; bottom: 50px; left: 10px; right: 10px; max-width: none; justify-content: center; }
+    .btn { padding: 5px 9px; font-size: 12.5px; }
+  }
 </style>
 </head>
 <body>
@@ -60,14 +68,14 @@
 <div id="title" class="hud"><h1 id="name">bmt preview</h1><p id="sub"></p></div>
 <div id="toolbar" class="hud"></div>
 <div id="hint" class="hud"></div>
-<div id="status" class="hud" data-status="rendering"><span class="dot"></span><span id="status-text">Rendering…</span></div>
+<div id="status" class="hud" data-status="ready"><span class="dot"></span><span id="status-text">Live</span></div>
 <button id="issues-btn" class="hud btn" hidden></button>
 <div id="issues" class="hud" hidden><ul></ul></div>
 <div id="error" class="hud" hidden><div><h2>The project has a problem</h2><pre></pre></div></div>
 
 <script type="module">
 const $ = (id) => document.getElementById(id);
-const statusLabels = { rendering: 'Rendering…', ready: 'Live', error: 'Needs a fix', offline: 'Preview server stopped' };
+const statusLabels = { ready: 'Live', error: 'Needs a fix', offline: 'Preview server stopped' };
 function setStatus(s) {
   $('status').dataset.status = s;
   $('status-text').textContent = statusLabels[s] || s;
@@ -76,11 +84,44 @@ function setStatus(s) {
 let viewer = null;
 try {
   const mod = await import('/viewer.js');
-  viewer = mod.createViewer({ stage: $('stage'), toolbar: $('toolbar'), hint: $('hint') });
+  viewer = mod.createViewer({ stage: $('stage'), toolbar: $('toolbar'), hint: $('hint'), hud: [$('title'), $('toolbar'), $('hint'), $('status')] });
 } catch (e) {
   $('error').hidden = false;
   $('error').querySelector('pre').textContent = 'Could not start the 3D viewer: ' + e.message + '\n(The viewer loads three.js from a CDN, so it needs an internet connection.)';
 }
+const save = document.createElement('a');
+save.className = 'btn'; save.textContent = 'Save PDF'; save.href = '/print?auto'; save.target = '_blank';
+save.title = 'Open the print-ready pages and save them as a PDF';
+$('toolbar').append(save);
+
+// Print warnings come from two places: the project build (server) and the
+// checks each surface runs on itself once it has rendered in this page.
+let buildIssues = [];
+const surfaceIssues = new Map(); // surface id -> issues
+function renderIssues() {
+  const issues = [...buildIssues, ...[...surfaceIssues.values()].flat()];
+  const btn = $('issues-btn');
+  btn.hidden = issues.length === 0;
+  if (issues.length === 0) $('issues').hidden = true;
+  const n = issues.filter((i) => i.level !== 'info').length;
+  btn.textContent = n ? `⚠ ${n} print warning${n === 1 ? '' : 's'}` : `${issues.length} note${issues.length === 1 ? '' : 's'}`;
+  const ul = $('issues').querySelector('ul');
+  ul.textContent = '';
+  for (const i of issues) {
+    const li = document.createElement('li');
+    const lvl = document.createElement('span'); lvl.className = 'lvl ' + i.level; lvl.textContent = i.level;
+    li.append(lvl);
+    if (i.where) { const w = document.createElement('span'); w.className = 'where'; w.textContent = i.where + ' — '; li.append(w); }
+    li.append(i.message);
+    ul.append(li);
+  }
+}
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.bmt !== 'issues') return;
+  surfaceIssues.set(e.data.id, e.data.issues);
+  renderIssues();
+});
+$('issues-btn').addEventListener('click', () => { $('issues').hidden = !$('issues').hidden; });
 
 async function refresh() {
   const state = await (await fetch('/api/state')).json();
@@ -98,33 +139,14 @@ async function refresh() {
   setStatus(state.status);
   $('error').hidden = !state.error;
   if (state.error) $('error').querySelector('pre').textContent = state.error;
-
-  const issues = state.issues || [];
-  const btn = $('issues-btn');
-  btn.hidden = issues.length === 0;
-  if (issues.length === 0) $('issues').hidden = true;
-  const n = issues.filter((i) => i.level !== 'info').length;
-  btn.textContent = n ? `⚠ ${n} print warning${n === 1 ? '' : 's'}` : `${issues.length} note${issues.length === 1 ? '' : 's'}`;
-  const ul = $('issues').querySelector('ul');
-  ul.textContent = '';
-  for (const i of issues) {
-    const li = document.createElement('li');
-    const lvl = document.createElement('span'); lvl.className = 'lvl ' + i.level; lvl.textContent = i.level;
-    li.append(lvl);
-    if (i.where) { const w = document.createElement('span'); w.className = 'where'; w.textContent = i.where + ' — '; li.append(w); }
-    li.append(i.message);
-    ul.append(li);
-  }
+  buildIssues = state.issues || [];
+  for (const id of [...surfaceIssues.keys()]) if (!(id in state.surfaces)) surfaceIssues.delete(id);
+  renderIssues();
   if (viewer && state.model && !state.error) viewer.update(state);
 }
-$('issues-btn').addEventListener('click', () => { $('issues').hidden = !$('issues').hidden; });
 
 const events = new EventSource('/api/events');
-events.onmessage = (e) => {
-  const msg = JSON.parse(e.data);
-  setStatus(msg.status);
-  if (msg.status !== 'rendering') refresh();
-};
+events.onmessage = () => refresh();
 events.onerror = () => setStatus('offline');
 refresh();
 </script>

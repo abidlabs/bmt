@@ -19,9 +19,14 @@ print-ready files for them to upload to the vendor.
 6. When the user is happy, run `bmt export <dir>` and tell them where the files
    are and where to upload them (the command prints the vendor's URL).
 
+`bmt check` and `bmt export` use a Chrome, Edge, Chromium or Brave that is already
+installed (bmt ships no browser; set `BMT_BROWSER` to choose one). If the machine
+has none, the user can still get the print file from the preview page's
+**Save PDF** button, which opens the browser's print dialog.
+
 You never need to open the preview yourself; it is for the user. If the project
 has a mistake (bad JSON, a template error), the preview page shows the error and
-keeps the last good render, so just fix the file.
+keeps the last good design, so just fix the file.
 
 ## Rules that apply to every product
 
@@ -39,8 +44,8 @@ keeps the last good render, so just fix the file.
   Other files (images, fonts) are referenced relative to the project folder,
   e.g. `<img src="assets/cat.png">`.
 - Images need about 300 pixels per printed inch. Prefer SVG and CSS for shapes.
-- Web fonts work (`@import` in `style.css`), but need a network connection at
-  render time. For emoji, use the `Noto Color Emoji` web font rather than the
+- Web fonts work (`@import` in `style.css`), but need a network connection
+  whenever the design is shown or exported. For emoji, use the `Noto Color Emoji` web font rather than the
   system emoji font, so the result is the same on every machine and prints sharply.
 - Do not write into `.bmt/` or `export/`; bmt owns those.
 - Only use artwork the user has the rights to print. Vendors reject copied art.

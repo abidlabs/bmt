@@ -47,23 +47,26 @@ bmt export my-deck
 | `bmt export <dir>` | Writes the print-ready PDF and images |
 | `bmt guide` | Prints the instructions an agent needs |
 
-The first render downloads a headless Chromium (about 300 MB, one time). The
-preview page loads three.js from a CDN, so it needs an internet connection.
+bmt ships no browser. `bmt check` and `bmt export` use the Chrome, Edge, Chromium
+or Brave already on your machine; without one, the preview page's **Save PDF**
+button does the export through the browser's print dialog. The preview page
+loads three.js from a CDN, so it needs an internet connection.
 
 A full sample deck lives in [examples/animal-alphabet](examples/animal-alphabet).
 
 ## How it is built
 
-Every printable surface is an HTML page of an exact physical size, rendered by
-headless Chromium for both the preview and the print files, so the preview
-matches the print.
+Every printable surface is an HTML page of an exact physical size. The preview
+places those live pages in 3D with three.js's CSS3DRenderer, and the export
+prints the same pages to PDF, so the preview is the print.
 
 ```
 src/bmt/
   core.py        projects, products, printable surfaces, issues
-  render.py      Chromium rendering to PNG/PDF and the preflight checks
+  server.py      live-reload server: preview, check and print pages
+  browser.py     finds and drives an installed Chrome-family browser, headlessly
   export.py      check and export
-  preview/       live-reload server and the page shell
+  static/        the preview page shell and the in-page print checks
   kinds/
     base.py      the interface a kind implements
     cards/       card decks: product specs, starter project, 3D viewer, agent guide
